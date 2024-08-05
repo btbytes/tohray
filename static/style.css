@@ -1,0 +1,47 @@
+:root {
+    --global-font-size: 12pt;
+    --global-line-height: 1.3em;
+    --font-stack: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial,
+        sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+    --input-style: solid;
+    --primary-color: black;
+}
+a {
+    border-bottom: 1px dotted dimgrey;
+}
+body {
+    background-color: ghostwhite;
+}
+.grid-container {
+    display: grid;
+    grid-template-columns: 2fr 8fr;
+    gap: 4px;
+}
+.grid-item {
+    padding: 2px;
+}
+.entry {
+    margin-bottom: 1em;
+}
+.entry h1,
+.entry h2,
+.entry h3,
+.entry h4 {
+    padding-top: 0;
+    margin-top: 0;
+}
+#searchform {
+    margin-bottom: 3em;
+}
+#searchtext {
+    width: 100%;
+    border-radius: 8px;
+}
+.timestamp {
+    color: gray;
+    font-size: 90%;
+}
+
+#pagenav {
+    text-align: right;
+}

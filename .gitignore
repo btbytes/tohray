@@ -1,0 +1,6 @@
+initdb
+tohray
+.env
+*.db
+consts.nim
+fly-consts.nim

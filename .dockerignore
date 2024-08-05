@@ -1,0 +1,6 @@
+# flyctl launch added from .gitignore
+**/initdb
+**/tohray
+**/.env
+**/*.db
+fly.toml
