@@ -49,7 +49,9 @@ proc initDb*() =
       try:
         db.exec(sql(line.strip))
       except DbError as e:
-        echo fmt"initdb Database Exception {e.msg}"
+        logging.error(fmt"initdb Database Exception {e.msg}")
       except Exception as e:
-        echo fmt"initdb Exception {e.msg}"
+        logging.error(fmt"initdb Exception {e.msg}")
     logging.info(fmt"Initialized the database - {consts.dbPath} .")
+  else:
+    logging.debug(fmt"Database file - {consts.dbPath} exists.")

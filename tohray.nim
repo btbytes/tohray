@@ -22,8 +22,9 @@ let
 
 let socket = newSocket()
 socket.bindAddr(Port(consts.port), "0.0.0.0")
-socket.setSockOpt(OptReuseAddr, false)
+socket.setSockOpt(OptReuseAddr, true)
 socket.listen()
+
 let
   settings = newSettings(
     appName = env.getOrDefault("appName", "Tohray"),

@@ -402,3 +402,27 @@ proc deletePost*(ctx: Context) {.async.} =
       result = baseLayout(ctx, "Delete Post", deletePage(ctx))
   else:
     resp redirect(urlFor(ctx, "login"), Http302)
+
+proc exportAll*(ctx: Context) {.async.} =
+  let
+    format = ctx.getQueryParams("format", "json")
+    db = open(consts.dbPath, "", "", "")
+    rows = db.getAllRows(sql"SELECT slug, created, content FROM post ORDER BY created DESC")
+  defer: db.close()
+  if format == "json":
+    ctx.response.addHeader("Content-Type", "application/json")
+    var jsonArray = newJArray()
+    for row in rows:
+        var jsonObject = %*{
+          "slug": row[0],
+          "created": row[1],
+          "content": row[2]
+        }
+        jsonArray.add(jsonObject)
+    resp jsonResponse(%*{"posts": jsonArray})
+  elif format == "md":
+    ctx.response.addHeader("Content-Type", "text/plain")
+    var res:string
+    for row in rows:
+      res = res & "\n" & row[0] & "\n" &  row[1] & "\n\n" & $rows[2] & "\n\n" & chr(28) # ascii file separator
+    resp res
