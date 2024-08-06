@@ -82,7 +82,7 @@ The app and the volume should be in the same zone.
 - [] RSS Feed
 - [] Export all the posts in a JSON file
 - [] Deploy on other PaaS platforms like unicraft etc.
-
+- [] Make a static build of this docker image. Currently, it is using a full sized Ubuntu Normal image. bleh.
 
 ## Someday, maybe
 
