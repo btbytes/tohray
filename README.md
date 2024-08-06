@@ -19,6 +19,7 @@ You can see this in action at <https://tohray.fly.dev>.
 - Export all the feeds from `/export` endpoint.
     - default format is JSON
     - append `?format=md` to export in markdown format ie., `/export?format=md`. The entries are returned with a File Seperator (ASCII 28) after each entry.
+- Calendar view by month at `/calendar` to see all the posts belonging to a month.
 
 ## Non-Features
 

@@ -9,5 +9,6 @@ const urlPatterns* = @[
   pattern("/write", createPost, @[HttpGet, HttpPost], name="write"),
   pattern("/delete", deletePost, @[HttpGet, HttpPost], name="delete"),
   pattern("/export", exportAll, HttpGet, name="export"),
+  pattern("/calendar", calendarView, HttpGet, name="calendar"),
   pattern("/{slug}", showPost),
 ]

@@ -12,7 +12,7 @@ import strutils
 import times
 import unicode
 import uri
-
+import tables
 
 var logger = newConsoleLogger(fmtStr="[$datetime] - $levelname: ")
 addHandler(logger)
@@ -426,3 +426,35 @@ proc exportAll*(ctx: Context) {.async.} =
     for row in rows:
       res = res & "\n" & row[0] & "\n" &  row[1] & "\n\n" & $rows[2] & "\n\n" & chr(28) # ascii file separator
     resp res
+
+proc getAllPostCounts(): Table[int, array[12, int]] =
+  let db = open(consts.dbPath, "", "", "")
+  let query = sql"""
+      SELECT strftime('%Y', created) as year,
+             strftime('%m', created) as month,
+             COUNT(*) as count
+      FROM post
+      GROUP BY year, month
+      ORDER BY year, month
+    """
+  result = initTable[int, array[12, int]]()
+  for row in db.getAllRows(query):
+    let year = parseInt(row[0])
+    let month = parseInt(row[1]) - 1  # 0-based index for months
+    let count = parseInt(row[2])
+    if year notin result:
+      result[year] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    result[year][month] = count
+
+proc calendarView*(ctx: Context) {.async.} =
+  let postCounts = getAllPostCounts()
+
+  let vnode = buildHtml(table(id="calendar")):
+    for year, counts in postCounts.pairs:
+      tr:
+        td: text $year
+        for month in Month:
+          let count = counts[month.ord-1]
+          td:
+            a(href=fmt"/?month={year}-{align($(month.ord), 2, '0')}"): text $month & " (" & $count & ")"
+  result = baseLayout(ctx, "Calendar", vnode)
