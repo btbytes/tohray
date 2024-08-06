@@ -45,3 +45,7 @@ body {
 #pagenav {
     text-align: right;
 }
+
+#content {
+    font-family: var(--mono-font-stack);
+}

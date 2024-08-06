@@ -22,7 +22,7 @@ let
 
 let socket = newSocket()
 socket.bindAddr(Port(consts.port), "0.0.0.0")
-socket.setSockOpt(OptReuseAddr, true)
+socket.setSockOpt(OptReuseAddr, false)
 socket.listen()
 let
   settings = newSettings(
