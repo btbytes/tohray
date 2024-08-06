@@ -1,4 +1,3 @@
-import consts
 import db_connector/db_sqlite
 import karax / [karaxdsl, vdom]
 import logging
@@ -8,11 +7,15 @@ import prologue
 import prologue/middlewares/csrf
 import prologue/security/hasher
 import strformat
+import strtabs
 import strutils
+import tables
 import times
 import unicode
 import uri
-import tables
+import xmltree
+
+import ./consts
 
 var logger = newConsoleLogger(fmtStr = "[$datetime] - $levelname: ")
 addHandler(logger)
@@ -439,7 +442,7 @@ proc exportAll*(ctx: Context) {.async.} =
     ctx.response.addHeader("Content-Type", "text/plain")
     var res: string
     for row in rows:
-      res = res & "\n" & row[0] & "\n" & row[1] & "\n\n" & $rows[2] & "\n\n" &
+      res = res & "\n" & row[0] & "\n" & row[1] & "\n\n" & $row[2] & "\n\n" &
           chr(28) # ascii file separator
     resp res
 
