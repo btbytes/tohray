@@ -8,3 +8,10 @@ bin           = @["tohray"]
 
 # Dependencies
 requires @["nim >= 2.0.8", "prologue", "db_connector", "karax", "markdown"]
+
+import distros
+if detectOs(Ubuntu):
+  foreignDep "libpcre3-dev"
+  foreignDep "libsqlite3-dev"
+  foreignDep "build-essential"
+  foreignDep "wget"
