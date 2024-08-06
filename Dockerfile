@@ -1,7 +1,6 @@
 ARG TARGET_ENV="default"
 FROM nimlang/nim AS builder
-CMD ["/sbin/my_init"]
-RUN apt-get update # && apt-get install  libpcre3-dev libsqlite3-dev build-essential wget -y
+RUN apt-get update
 
 FROM builder AS nimbuilder
 WORKDIR /app
