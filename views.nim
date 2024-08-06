@@ -46,6 +46,7 @@ proc baseLayout(ctx: Context, title: string, content: VNode) {.async.}=
     head:
       link(href="/static/terminal.min.css", rel="stylesheet")
       link(href="/static/style.css", rel="stylesheet")
+      link(href="/static/favicon.ico", type="image/x-icon", rel="icon")
       title: text title
     body(class="terminal"):
       tdiv(class="container"):
