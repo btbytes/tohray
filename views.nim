@@ -7,13 +7,11 @@ import prologue
 import prologue/middlewares/csrf
 import prologue/security/hasher
 import strformat
-import strtabs
 import strutils
 import tables
 import times
 import unicode
 import uri
-import xmltree
 
 import ./consts
 
