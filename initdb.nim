@@ -50,8 +50,4 @@ proc initDb*() =
         db.exec(sql(line.strip))
       except DbError as e:
         echo fmt"Database Exception {e.msg}"
-        quit(1)
     logging.info(fmt"Initialized the database - {consts.dbPath} .")
-
-if isMainModule:
-  initDb()

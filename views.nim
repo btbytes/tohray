@@ -123,7 +123,6 @@ proc login*(ctx: Context) {.async.} =
       username = ctx.getPostParams("username")
       password = SecretKey(ctx.getPostParams("password"))
       row = db.getRow(sql"SELECT * FROM users WHERE username = ?", username)
-    logging.error(fmt"username: {username}")
     if row.len == 0:
       error = "Incorrect username"
     elif row.len < 3:
@@ -225,7 +224,6 @@ proc renderEntry(slug: string, timestamp: string, content: string) : VNode =
   return vnode
 
 proc getPage(page: string): int =
-  info(fmt"getPage. page = {page}")
   var res = 1
   if page != "":
     try:
