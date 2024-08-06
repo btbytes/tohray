@@ -4,3 +4,4 @@ tohray
 *.db
 consts.nim
 fly-consts.nim
+data/

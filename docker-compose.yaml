@@ -1,0 +1,9 @@
+services:
+  tohray:
+    build: .
+    image: tohray:latest
+    container_name: tohray
+    ports:
+      - 8080:8080
+    volumes:
+      - $PWD/data/:/app/data
