@@ -438,6 +438,7 @@ proc exportAll*(ctx: Context) {.async.} =
     resp jsonResponse(%*{"posts": jsonArray})
   elif format == "md":
     ctx.response.addHeader("Content-Type", "text/plain")
+    ctx.response.addHeader("Content-Disposition: inline", "filename=\"stream.txt\"")
     var res: string
     for row in rows:
       res = res & "\n" & row[0] & "\n" & row[1] & "\n\n" & $row[2] & "\n\n" &
