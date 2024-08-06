@@ -456,5 +456,8 @@ proc calendarView*(ctx: Context) {.async.} =
         for month in Month:
           let count = counts[month.ord-1]
           td:
-            a(href=fmt"/?month={year}-{align($(month.ord), 2, '0')}"): text $month & " (" & $count & ")"
+            if count > 0:
+              a(href=fmt"/?month={year}-{align($(month.ord), 2, '0')}"): text ($month)[0..2] & " (" & $count & ")"
+            else:
+              text ($month)[0..2]
   result = baseLayout(ctx, "Calendar", vnode)
