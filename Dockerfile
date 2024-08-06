@@ -10,5 +10,5 @@ RUN nimble install -y --depsOnly
 # Currently, this docker deployment has been tested only on fly.io
 FROM nimbuilder
 COPY fly-consts.nim consts.nim
-RUN nim compile tohray.nim
+RUN nim -d:release compile tohray.nim
 ENTRYPOINT ["./tohray"]

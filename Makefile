@@ -1,12 +1,8 @@
 all: tohray
 
-initdb: initdb.nim
-	nim -d:debug compile $<
-
 tohray: *.nim
-	nim -d:debug compile tohray.nim 
+	nim -d:debug c tohray.nim
 
 .PHONY:
 clean:
-	rm -f app
-	rm -f initdb
+	rm -f tohray
