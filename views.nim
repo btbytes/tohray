@@ -43,8 +43,10 @@ proc isValidYearMonth*(s: string): bool =
 
 proc baseLayout(ctx: Context, title: string, content: VNode) {.async.} =
   let fullname = ctx.session.getOrDefault("userFullname", "")
-  let vnode = buildHtml(html):
+  let vnode = buildHtml(html(lang="en")):
     head:
+      # <meta content="width=device-width, initial-scale=1" name="viewport"/>
+      meta(name="viewport", content="width=device-width, initial-scale=1")
       link(href = "/static/terminal.min.css", rel = "stylesheet")
       link(href = "/static/style.css", rel = "stylesheet")
       link(href = "/static/favicon.ico", type = "image/x-icon", rel = "icon")
