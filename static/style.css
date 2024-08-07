@@ -48,3 +48,7 @@ body {
 #content {
     font-family: var(--mono-font-stack);
 }
+
+.menu-item {
+    color: black;
+}
