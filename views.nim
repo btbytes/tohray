@@ -343,7 +343,12 @@ proc showPost*(ctx: Context) {.async.} =
       resp "slug = " & slug & "\n\n" & $rows[0][2]
 
 
-proc newpostPage(ctx: Context, error: string = ""): VNode =
+proc editpostPage(ctx: Context, oldslug:string="", content:string="", error: string = ""): VNode =
+  var slug:string
+  if oldslug == "":
+    slug = $epochTime().int
+  else:
+    slug = oldslug
   let csrfToken = ctx.generateToken()
   let vnode = buildHtml(tdiv(id = "postform")):
     if error.len > 0:
@@ -355,10 +360,10 @@ proc newpostPage(ctx: Context, error: string = ""): VNode =
         input(type = "hidden", name = "CSRFToken", value = csrfToken)
         tdiv(class = "form-group"):
           label(`for` = "content"): text "Content"
-          textarea(name = "content", id = "content", rows = "10", cols = "80")
+          textarea(name = "content", id = "content", rows = "10", cols = "80"): text content
         tdiv(class = "form-group"):
           label(`for` = "slug"): text "Post Slug"
-          input(type = "text", name = "slug", id = "slug", value = $epochTime().int)
+          input(type = "text", name = "slug", id = "slug", value = slug)
         tdiv(class = "form-group"):
           button(class = "btn btn-default", type = "submit", role = "button",
               name = "submit"): text "Create Post"
@@ -381,7 +386,27 @@ proc createPost*(ctx: Context) {.async.} =
       except Exception as e:
         resp fmt"An unexpected error occurred: {e.msg}", Http500
     else:
-      result = baseLayout(ctx, "New Post", newpostPage(ctx))
+      result = baseLayout(ctx, "New Post", editpostPage(ctx))
+  else:
+    resp redirect(urlFor(ctx, "login"), Http302)
+
+
+proc editPost*(ctx: Context) {.async.} =
+  if ctx.session.getOrDefault("userId", "").len != 0:
+    if ctx.request.reqMethod == HttpPost:
+      let
+        db = open(consts.dbPath, "", "", "")
+        slug = ctx.getPostParams("slug")
+        content = ctx.getPostParams("content")
+      try:
+        db.exec(sql"UPDATE post SET slug=?, conent=?, created=CURRENT_TIMESTAMP WHERE slug=?", slug, content, slug)
+        resp redirect(ctx.urlFor("post", {"slug": slug}), Http302)
+      except DbError as e:
+        resp fmt"Database error occurred: {e.msg}", Http500
+      except Exception as e:
+        resp fmt"An unexpected error occurred: {e.msg}", Http500
+    else:
+      result = baseLayout(ctx, "Edit Post", editpostPage(ctx))
   else:
     resp redirect(urlFor(ctx, "login"), Http302)
 
