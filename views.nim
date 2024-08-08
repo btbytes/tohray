@@ -227,7 +227,7 @@ proc logout*(ctx: Context) {.async.} =
   resp redirect(urlFor(ctx, "index"), Http302)
 
 
-proc renderEntry(slug: string, timestamp: string, content: string): VNode =
+proc renderEntry(ctx: Context, slug: string, timestamp: string, content: string): VNode =
   let month = timestamp[0 ..< 7]
   let time = timestamp[^8 .. ^1]
   let vnode = buildHtml(tdiv(class = "grid-container entry")):
@@ -236,7 +236,14 @@ proc renderEntry(slug: string, timestamp: string, content: string): VNode =
       span(): text " "
       a(class = "timestamp", href = fmt"/{slug}"): text time
     tdiv(class = "grid-item"):
+      if ctx.session.getOrDefault("userId", "").len != 0:
+        p(class="grid-item right"):
+          a(href = urlFor(ctx, "edit", {"slug": slug})): text "Edit post"
+          span: text "  "
+          a(href = urlFor(ctx, "delete", {"slug": slug})): text "Delete post"
       verbatim(markdown(content))
+
+
   return vnode
 
 proc getPage(page: string): int =
@@ -318,7 +325,7 @@ proc homepage*(ctx: Context) {.async gcsafe.} =
     rows = getQueryPosts(query, page)
   let vnode = buildHtml(tdiv()):
     for row in rows:
-      renderEntry(row[0], row[1], row[2])
+      renderEntry(ctx, row[0], row[1], row[2])
     tdiv(id = "pagenav"):
       pageNav(month, page, query)
   result = baseLayout(ctx, "Stream", vnode)
@@ -336,7 +343,7 @@ proc showPost*(ctx: Context) {.async.} =
   else:
     if format == "html":
       let vnode = buildHtml():
-        renderEntry($rows[0][0], $rows[0][1], $rows[0][2])
+        renderEntry(ctx, $rows[0][0], $rows[0][1], $rows[0][2])
       result = baseLayout(ctx, "Homepage", vnode)
     elif format == "md":
       ctx.response.addHeader("Content-Type", "text/plain")
@@ -366,7 +373,8 @@ proc editpostPage(ctx: Context, oldslug:string="", content:string="", error: str
           input(type = "text", name = "slug", id = "slug", value = slug)
         tdiv(class = "form-group"):
           button(class = "btn btn-default", type = "submit", role = "button",
-              name = "submit"): text "Create Post"
+              name = "submit"): text "Save"
+
   return vnode
 
 
@@ -392,41 +400,54 @@ proc createPost*(ctx: Context) {.async.} =
 
 
 proc editPost*(ctx: Context) {.async.} =
+  var slug:string
   if ctx.session.getOrDefault("userId", "").len != 0:
+    let db = open(consts.dbPath, "", "", "")
+
     if ctx.request.reqMethod == HttpPost:
       let
-        db = open(consts.dbPath, "", "", "")
-        slug = ctx.getPostParams("slug")
         content = ctx.getPostParams("content")
+        slug = ctx.getPostParams("slug")
       try:
-        db.exec(sql"UPDATE post SET slug=?, conent=?, created=CURRENT_TIMESTAMP WHERE slug=?", slug, content, slug)
+        db.exec(sql"UPDATE post SET slug=?, content=?, created=CURRENT_TIMESTAMP WHERE slug=?", slug, content, slug)
         resp redirect(ctx.urlFor("post", {"slug": slug}), Http302)
       except DbError as e:
         resp fmt"Database error occurred: {e.msg}", Http500
       except Exception as e:
         resp fmt"An unexpected error occurred: {e.msg}", Http500
     else:
-      result = baseLayout(ctx, "Edit Post", editpostPage(ctx))
+      slug = ctx.getPathParams("slug")
+      try:
+        let row = db.getRow(sql"select content from post where slug=?", slug)
+        if row.len > 0:
+          result = baseLayout(ctx, "Edit Post", editpostPage(ctx, slug, row[0]))
+        else:
+          result = baseLayout(ctx, "Edit Post", editpostPage(ctx, slug, fmt"No such entry - {slug}"))
+      except DbError as e:
+        resp fmt"Database error occurred: {e.msg}", Http500
+      except Exception as e:
+        resp fmt"An unexpected error occurred: {e.msg}", Http500
+
   else:
     resp redirect(urlFor(ctx, "login"), Http302)
 
-proc deletePage(ctx: Context, error: string = ""): VNode =
+proc deletePage(ctx: Context, slug: string, error: string = ""): VNode =
   let csrfToken = ctx.generateToken()
   let vnode = buildHtml(tdiv(id = "postform")):
     if error.len > 0:
       tdiv(class = "terminal-alert terminal-alert-error"):
         text error
     form(name = "delete", id = "deleteform", `method` = "POST", action = urlFor(
-        ctx, "delete")):
+        ctx, "delete", {"slug": slug})):
       fieldset():
-        legend(): text "Delete a Post"
+        legend(): text "Delete the post"
         input(type = "hidden", name = "CSRFToken", value = csrfToken)
         tdiv(class = "form-group"):
           label(`for` = "slug"): text "Post Slug"
-          input(type = "text", name = "slug", id = "slug")
+          input(type = "text", name = "slug", id = "slug", value=slug)
         tdiv(class = "form-group"):
           button(class = "btn btn-default", type = "submit", role = "button",
-              name = "submit"): text "Delete Post"
+              name = "submit"): text "Delete"
   return vnode
 
 proc deletePost*(ctx: Context) {.async.} =
@@ -443,7 +464,8 @@ proc deletePost*(ctx: Context) {.async.} =
       except Exception as e:
         resp fmt"An unexpected error occurred: {e.msg}", Http500
     else:
-      result = baseLayout(ctx, "Delete Post", deletePage(ctx))
+      let slug = ctx.getPathParams("slug")
+      result = baseLayout(ctx, "Delete", deletePage(ctx, slug))
   else:
     resp redirect(urlFor(ctx, "login"), Http302)
 
