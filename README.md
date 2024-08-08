@@ -12,9 +12,10 @@ You can see this in action at <https://tohray.fly.dev>.
 
 - Write new posts
 - In markdown
-- Click on the date to see posts written during that *month*.
+- Edit posts
 - Delete posts
-- Supports multiple users, but I really wrote it for myself.
+- Click on the date to see posts written during that *month*.
+- Supports multiple users, but I really wrote it for one user.
 - You can allow users to sign up by giving them the `inviteCode`
 - Export all the feeds from `/export` endpoint.
     - default format is JSON
@@ -23,12 +24,8 @@ You can see this in action at <https://tohray.fly.dev>.
 
 ## Non-Features
 
-- There is no edit button. If you wan to edit a post, you first make a copy of the content. Say
-you want to edit the post with the slug `about`. So, go to <https://yoursite.com/about?format=md>
-and copy the whole text. The first line prints `slug = about`, so that you know what post you are
-about to re-edit.
-- There is no "user management"
-- There is no "password reset"
+- There is no "user management".
+- There is no "password reset".
 
 ## Technology Details
 
@@ -41,7 +38,7 @@ to be very fast, small, and quite portable.
 
 - Programming Language: [Nim](https://nim-lang.org)
 - Framework: [Prologue](https://planety.github.io/prologue/), which in turn uses [Karax](https://github.com/karaxnim/karax).
-- Database: Sqlite
+- Database: SQLite
 - CSS: [Terminal](https://terminalcss.xyz)
 - Cloud: Tested on <https://fly.io>
 - Editor: eh.. didn't know you cared, but it was written on [Zed](https://zed.dev) which has decent support
@@ -85,13 +82,8 @@ The app and the volume should be in the same zone.
 
 - [x] Export all the posts in a JSON file (and markdown)
 - [x] Add a calendar view
+- [x] Edit Posts. Don't hold your breath.
 - [ ] Add calendar and export links to the footer of the site.
 - [ ] RSS Feed
 - [ ] Deploy on other PaaS platforms like unicraft etc.
 - [ ] Make a static build of this docker image. Currently, it is using a full sized Ubuntu Normal image. bleh.
-
-## Someday, maybe
-
-- Edit Posts. Don't hold your breath.
-
-Till then, Enjoy! and happy streaming.
