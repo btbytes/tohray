@@ -43,11 +43,11 @@ proc isValidYearMonth*(s: string): bool =
 
 proc baseLayout(ctx: Context, title: string, content: VNode) {.async.} =
   let fullname = ctx.session.getOrDefault("userFullname", "")
-  let vnode = buildHtml(html(lang="en")):
+  let vnode = buildHtml(html(lang = "en")):
     head:
-      meta(charset="utf-8")
-      meta(name="viewport", content="width=device-width, initial-scale=1")
-      meta(name="description", content=title)
+      meta(charset = "utf-8")
+      meta(name = "viewport", content = "width=device-width, initial-scale=1")
+      meta(name = "description", content = title)
       link(href = "/static/terminal.min.css", rel = "stylesheet")
       link(href = "/static/style.css", rel = "stylesheet")
       link(href = "/static/favicon.ico", type = "image/x-icon", rel = "icon")
@@ -227,7 +227,8 @@ proc logout*(ctx: Context) {.async.} =
   resp redirect(urlFor(ctx, "index"), Http302)
 
 
-proc renderEntry(ctx: Context, slug: string, timestamp: string, content: string): VNode =
+proc renderEntry(ctx: Context, slug: string, timestamp: string,
+    content: string): VNode =
   let month = timestamp[0 ..< 7]
   let time = timestamp[^8 .. ^1]
   let vnode = buildHtml(tdiv(class = "grid-container entry")):
@@ -237,7 +238,7 @@ proc renderEntry(ctx: Context, slug: string, timestamp: string, content: string)
       a(class = "timestamp", href = fmt"/{slug}"): text time
     tdiv(class = "grid-item"):
       if ctx.session.getOrDefault("userId", "").len != 0:
-        p(class="grid-item right"):
+        p(class = "grid-item right"):
           a(href = urlFor(ctx, "edit", {"slug": slug})): text "Edit post"
           span: text "  "
           a(href = urlFor(ctx, "delete", {"slug": slug})): text "Delete post"
@@ -350,8 +351,9 @@ proc showPost*(ctx: Context) {.async.} =
       resp "slug = " & slug & "\n\n" & $rows[0][2]
 
 
-proc editpostPage(ctx: Context, oldslug:string="", content:string="", error: string = ""): VNode =
-  var slug:string
+proc editpostPage(ctx: Context, oldslug: string = "", content: string = "",
+    error: string = ""): VNode =
+  var slug: string
   if oldslug == "":
     slug = $epochTime().int
   else:
@@ -367,7 +369,8 @@ proc editpostPage(ctx: Context, oldslug:string="", content:string="", error: str
         input(type = "hidden", name = "CSRFToken", value = csrfToken)
         tdiv(class = "form-group"):
           label(`for` = "content"): text "Content"
-          textarea(name = "content", id = "content", rows = "10", cols = "80"): text content
+          textarea(name = "content", id = "content", rows = "10",
+              cols = "80"): text content
         tdiv(class = "form-group"):
           label(`for` = "slug"): text "Post Slug"
           input(type = "text", name = "slug", id = "slug", value = slug)
@@ -400,7 +403,7 @@ proc createPost*(ctx: Context) {.async.} =
 
 
 proc editPost*(ctx: Context) {.async.} =
-  var slug:string
+  var slug: string
   if ctx.session.getOrDefault("userId", "").len != 0:
     let db = open(consts.dbPath, "", "", "")
 
@@ -409,7 +412,8 @@ proc editPost*(ctx: Context) {.async.} =
         content = ctx.getPostParams("content")
         slug = ctx.getPostParams("slug")
       try:
-        db.exec(sql"UPDATE post SET slug=?, content=?, created=CURRENT_TIMESTAMP WHERE slug=?", slug, content, slug)
+        db.exec(sql"UPDATE post SET slug=?, content=?, created=CURRENT_TIMESTAMP WHERE slug=?",
+            slug, content, slug)
         resp redirect(ctx.urlFor("post", {"slug": slug}), Http302)
       except DbError as e:
         resp fmt"Database error occurred: {e.msg}", Http500
@@ -422,7 +426,8 @@ proc editPost*(ctx: Context) {.async.} =
         if row.len > 0:
           result = baseLayout(ctx, "Edit Post", editpostPage(ctx, slug, row[0]))
         else:
-          result = baseLayout(ctx, "Edit Post", editpostPage(ctx, slug, fmt"No such entry - {slug}"))
+          result = baseLayout(ctx, "Edit Post", editpostPage(ctx, slug,
+              fmt"No such entry - {slug}"))
       except DbError as e:
         resp fmt"Database error occurred: {e.msg}", Http500
       except Exception as e:
@@ -444,7 +449,7 @@ proc deletePage(ctx: Context, slug: string, error: string = ""): VNode =
         input(type = "hidden", name = "CSRFToken", value = csrfToken)
         tdiv(class = "form-group"):
           label(`for` = "slug"): text "Post Slug"
-          input(type = "text", name = "slug", id = "slug", value=slug)
+          input(type = "text", name = "slug", id = "slug", value = slug)
         tdiv(class = "form-group"):
           button(class = "btn btn-default", type = "submit", role = "button",
               name = "submit"): text "Delete"
