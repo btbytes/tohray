@@ -85,5 +85,7 @@ The app and the volume should be in the same zone.
 - [x] Edit Posts. ~~Don't hold your breath~~
 - [x] Add calendar and export links
 - [x] RSS Feed
+- [ ] Fix Broken Search
+- [ ] Fix "Next Page" and "Previous Page" navigation
 - [ ] Deploy on other PaaS platforms like unicraft etc.
 - [ ] Make a static build of this docker image. Currently, it is using a full sized Ubuntu Normal image. bleh.
