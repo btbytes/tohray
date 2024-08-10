@@ -82,8 +82,8 @@ The app and the volume should be in the same zone.
 
 - [x] Export all the posts in a JSON file (and markdown)
 - [x] Add a calendar view
-- [x] Edit Posts. Don't hold your breath.
-- [ ] Add calendar and export links to the footer of the site.
-- [ ] RSS Feed
+- [x] Edit Posts. ~~Don't hold your breath~~
+- [x] Add calendar and export links
+- [x] RSS Feed
 - [ ] Deploy on other PaaS platforms like unicraft etc.
 - [ ] Make a static build of this docker image. Currently, it is using a full sized Ubuntu Normal image. bleh.

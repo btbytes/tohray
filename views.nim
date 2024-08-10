@@ -18,6 +18,21 @@ import ./consts
 var logger = newConsoleLogger(fmtStr = "[$datetime] - $levelname: ")
 addHandler(logger)
 
+# RSS Feed Structure
+type
+  RssChannel* = ref object
+    title*: string
+    link*: string
+    description*: string
+    items*: seq[RssItem]
+
+  RssItem* = ref object
+    title*: string
+    link*: string
+    description*: string
+    pubDate*: string
+
+
 proc filterSpecialChars*(input: string): string =
   result = ""
   for c in input.runes:
@@ -97,6 +112,10 @@ proc baseLayout(ctx: Context, title: string, content: VNode) {.async.} =
       tdiv(class = "container"):
         h1: text ctx.getSettings("siteTitle").getStr()
         content
+      tdiv(class="container"):
+        a(href="/calendar"): text "Calendar"
+        span: text ", "
+        a(href="/export"): text "Export"
   resp "<!DOCTYPE html>\n" & $vnode
 
 proc loginPage(ctx: Context, error: string = ""): VNode =
@@ -535,3 +554,55 @@ proc calendarView*(ctx: Context) {.async.} =
             else:
               text ($month)[0..2]
   result = baseLayout(ctx, "Calendar", vnode)
+
+
+proc rssView*(ctx: Context) {.async.} =
+  let db = open(consts.dbPath, "", "", "")
+  defer: db.close()
+  # Fetch Recent Posts
+  let query = """
+  SELECT slug, created, content
+  FROM post
+  ORDER BY created DESC
+  LIMIT 10
+  """
+  var rows = db.getAllRows(sql(query))
+
+  # Construct RSS Feed
+  let channel = RssChannel(
+    title: consts.siteName,
+    link: consts.siteUrl,
+    description: consts.siteTitle
+  )
+
+  for row in rows:
+    let item = RssItem(
+      title: row[0],
+      link: consts.siteUrl & row[0],
+      description: row[2],
+      pubDate: format(parseTime(row[1], "yyyy-MM-dd HH:mm:ss", utc()),  "ddd, dd MMM yyyy HH:mm:ss 'EST'")
+    )
+    channel.items.add(item)
+
+  var rss = """<?xml version="1.0" encoding="UTF-8" ?>
+  <rss version="2.0">
+  <channel>
+    <title>""" & channel.title & """</title>
+    <link>""" & channel.link & """</link>
+    <description>""" & markdown(channel.description) & """</description>
+  """
+  for item in channel.items:
+      rss &= """
+    <item>
+      <title>""" & item.title & """</title>
+      <link>""" & item.link & """</link>
+      <description>""" & markdown(item.description) & """</description>
+      <pubDate>""" & item.pubDate & """</pubDate>
+    </item>
+  """
+  rss &= """
+  </channel>
+  </rss>
+  """
+  ctx.response.addHeader("Content-Type", "application/rss+xml")
+  await ctx.respond(Http200, $rss)
