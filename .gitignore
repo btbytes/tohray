@@ -6,4 +6,5 @@ consts.nim
 fly-consts.nim
 test
 test.nim
+notes.md
 data/
