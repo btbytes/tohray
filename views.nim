@@ -36,8 +36,12 @@ type
 proc filterSpecialChars*(input: string): string =
   result = ""
   for c in input.runes:
-    if c.isAlpha or c == '_'.Rune:
+    if c.isAlpha or c.isDigit or c == ' '.Rune or c == '_'.Rune or c == '-'.Rune:
       result.add(c)
+  # Trim leading/trailing spaces and collapse multiple spaces
+  result = result.strip()
+  while "  " in result:
+    result = result.replace("  ", " ")
 
 proc isValidYearMonth*(s: string): bool =
   if s.len != 7 or s[4] != '-':
