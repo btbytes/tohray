@@ -5,18 +5,48 @@ import markdown
 import parseutils
 import prologue
 import prologue/middlewares/csrf
-import prologue/security/hasher
 import strformat
 import strutils
 import tables
 import times
 import unicode
 import uri
+import base64
+import nimcrypto/[pbkdf2, hmac, sha2]
 
 import ./consts
 
 var logger = newConsoleLogger(fmtStr = "[$datetime] - $levelname: ")
 addHandler(logger)
+
+# Password hashing helpers using nimcrypto (replacement for deprecated hasher)
+proc hashPassword(password: string, salt: string = "Prologue"): string =
+  ## Hash a password using PBKDF2-HMAC-SHA256
+  const iterations = 100_000
+  const keyLen = 32
+  var ctx: HMAC[sha256]
+  var output = newSeq[byte](keyLen)
+  discard ctx.pbkdf2(password, salt, iterations, output)
+  result = "pbkdf2_sha256$100000$" & salt & "$" & encode(output)
+
+proc verifyPassword(password: string, encoded: string): bool =
+  ## Verify a password against a PBKDF2 hash
+  try:
+    let parts = encoded.split('$')
+    if parts.len != 4 or parts[0] != "pbkdf2_sha256":
+      return false
+    let iterations = parseInt(parts[1])
+    let salt = parts[2]
+    let storedHash = parts[3]
+
+    var ctx: HMAC[sha256]
+    var output = newSeq[byte](32)
+    discard ctx.pbkdf2(password, salt, iterations, output)
+    let computedHash = encode(output)
+
+    return computedHash == storedHash
+  except:
+    return false
 
 # RSS Feed Structure
 type
@@ -157,7 +187,7 @@ proc login*(ctx: Context) {.async.} =
       encoded: string
     let
       username = ctx.getPostParams("username")
-      password = SecretKey(ctx.getPostParams("password"))
+      password = ctx.getPostParams("password")
       row = db.getRow(sql"SELECT * FROM users WHERE username = ?", username)
     if row.len == 0:
       error = "Incorrect username"
@@ -168,7 +198,7 @@ proc login*(ctx: Context) {.async.} =
       fullname = row[1]
       encoded = row[3]
 
-      if not pbkdf2_sha256verify(password, encoded):
+      if not verifyPassword(password, encoded):
         error = "Incorrect password"
 
     if error.len == 0:
@@ -220,8 +250,7 @@ proc register*(ctx: Context) {.async.} =
     var error: string
     let
       username = ctx.getPostParams("username")
-      password = pbkdf2_sha256encode(SecretKey(ctx.getPostParams(
-              "password")), "Prologue")
+      password = hashPassword(ctx.getPostParams("password"))
       invitecode = ctx.getPostParams("invitecode")
     var fullname = ctx.getPostParams("fullname")
     let expic = ctx.getSettings("inviteCode").getStr()
