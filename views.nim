@@ -325,14 +325,13 @@ proc constructPageUrl(month: string, page: int, query: string): string =
   result = "?" & encodeQuery(params)
 
 proc pageNav(month: string, page: int, query: string): VNode =
-  var pageurl: string
-  pageurl = constructPageUrl(month, page+1, query)
-  let vnode = buildHtml():
-    a(href = fmt"{pageurl}"): text "➡️"
-    # ERROR: 'VNode' and has to be used (or discarded)
-    # if page > 1:
-    #  pageurl = constructPageUrl(page-1, query)
-    #  a(href=fmt"{pageurl}"): text "⬅️"
+  let vnode = buildHtml(tdiv(class = "pagination")):
+    if page > 1:
+      let prevUrl = constructPageUrl(month, page-1, query)
+      a(href = prevUrl): text "⬅️ Previous"
+      span: text " | "
+    let nextUrl = constructPageUrl(month, page+1, query)
+    a(href = nextUrl): text "Next ➡️"
   return vnode
 
 proc homepage*(ctx: Context) {.async gcsafe.} =
