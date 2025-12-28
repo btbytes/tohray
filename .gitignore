@@ -8,3 +8,4 @@ test
 test.nim
 notes.md
 data/
+client.toml

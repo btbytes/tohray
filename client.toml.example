@@ -1,0 +1,9 @@
+# Tohray Client Configuration
+# Copy this file to client.toml and fill in your credentials
+
+# Your tohray instance URL
+url = "http://localhost:8080"
+
+# Your login credentials
+username = "your_username"
+password = "your_password"
