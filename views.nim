@@ -36,7 +36,9 @@ type
 proc filterSpecialChars*(input: string): string =
   result = ""
   for c in input.runes:
-    if c.isAlpha or c.isDigit or c == ' '.Rune or c == '_'.Rune or c == '-'.Rune:
+    # Convert rune to int to check if it's a digit (0-9 in Unicode)
+    let codepoint = c.int32
+    if c.isAlpha or (codepoint >= 48 and codepoint <= 57) or c == ' '.Rune or c == '_'.Rune or c == '-'.Rune:
       result.add(c)
   # Trim leading/trailing spaces and collapse multiple spaces
   result = result.strip()

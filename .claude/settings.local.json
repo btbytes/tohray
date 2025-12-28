@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(swift build:*)"
+      "Bash(swift build:*)",
+      "Bash(nimble uninstall:*)",
+      "Bash(nimble install:*)"
     ]
   }
 }
