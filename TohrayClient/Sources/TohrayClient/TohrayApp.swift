@@ -8,5 +8,13 @@ struct TohrayApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 600, height: 450)
+        .commands {
+            CommandGroup(replacing: .printItem) {
+                Button("Preview") {
+                    NotificationCenter.default.post(name: .toggleMarkdownPreview, object: nil)
+                }
+                .keyboardShortcut("p", modifiers: .command)
+            }
+        }
     }
 }

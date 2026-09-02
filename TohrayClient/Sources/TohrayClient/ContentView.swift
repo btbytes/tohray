@@ -3,10 +3,16 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = PostViewModel()
     @State private var showSettings = false
+    @State private var showPreview = false
 
     var body: some View {
         VStack(spacing: 0) {
-            MarkdownEditor(text: $viewModel.content, focusOnAppear: true)
+            MarkdownEditor(
+                text: $viewModel.content,
+                focusOnAppear: true,
+                onCommandReturn: submit,
+                onCommandP: togglePreview
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             VStack(alignment: .leading, spacing: 10) {
@@ -54,12 +60,28 @@ struct ContentView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    Button("Post") {
-                        Task {
-                            await viewModel.post()
+                    Button(action: togglePreview) {
+                        HStack(spacing: 8) {
+                            Text("Preview")
+                            Text("⌘P")
+                                .font(.callout)
+                                .opacity(0.8)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Preview (⌘P)")
+
+                    Button(action: submit) {
+                        HStack(spacing: 8) {
+                            Text("Post")
+                            Text("⌘↩")
+                                .font(.callout)
+                                .opacity(0.8)
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .help("Post (⌘↩)")
                     .disabled(viewModel.content.isEmpty || viewModel.isPosting)
                 }
                 .controlSize(.large)
@@ -69,6 +91,23 @@ struct ContentView: View {
         .frame(minWidth: 480, minHeight: 360)
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showPreview) {
+            MarkdownPreviewView(markdown: viewModel.content)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleMarkdownPreview)) { _ in
+            togglePreview()
+        }
+    }
+
+    private func togglePreview() {
+        showPreview.toggle()
+    }
+
+    private func submit() {
+        guard !viewModel.content.isEmpty, !viewModel.isPosting else { return }
+        Task {
+            await viewModel.post()
         }
     }
 }

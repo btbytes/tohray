@@ -5,22 +5,19 @@ import SwiftUI
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var focusOnAppear: Bool = false
+    var onCommandReturn: (() -> Void)? = nil
+    var onCommandP: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        scrollView.hasVerticalScroller = true
-        scrollView.drawsBackground = false
-
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return scrollView
-        }
-
+        let textView = MarkdownTextView()
         textView.delegate = context.coordinator
         textView.allowsUndo = true
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         // Top inset keeps the first line clear of the hidden-title-bar traffic lights.
         textView.textContainerInset = NSSize(width: 18, height: 30)
         textView.backgroundColor = .textBackgroundColor
@@ -28,8 +25,11 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
+        textView.onCommandReturn = onCommandReturn
+        textView.onCommandP = onCommandP
 
         // Markdown is punctuation-heavy, so macOS text substitutions would
         // silently corrupt what gets posted.
@@ -37,6 +37,13 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
+
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.documentView = textView
+        textView.frame = scrollView.contentView.bounds
 
         textView.string = text
         context.coordinator.highlight(textView)
@@ -49,8 +56,10 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
         context.coordinator.text = $text
+        guard let textView = scrollView.documentView as? MarkdownTextView else { return }
+        textView.onCommandReturn = onCommandReturn
+        textView.onCommandP = onCommandP
 
         guard textView.string != text else { return }
         textView.string = text
@@ -90,5 +99,35 @@ struct MarkdownEditor: NSViewRepresentable {
                 }
             }
         }
+    }
+}
+
+/// Intercepts editor-local shortcuts that NSTextView would otherwise swallow.
+final class MarkdownTextView: NSTextView {
+    var onCommandReturn: (() -> Void)?
+    var onCommandP: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if isCommandReturn(event) {
+            onCommandReturn?()
+            return
+        }
+        if isCommandP(event) {
+            onCommandP?()
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    private func isCommandReturn(_ event: NSEvent) -> Bool {
+        event.modifierFlags.contains(.command)
+            && (event.keyCode == 36 || event.keyCode == 76)
+    }
+
+    private func isCommandP(_ event: NSEvent) -> Bool {
+        event.modifierFlags.contains(.command)
+            && !event.modifierFlags.contains(.shift)
+            && !event.modifierFlags.contains(.option)
+            && event.keyCode == 35
     }
 }
