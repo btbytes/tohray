@@ -25,6 +25,18 @@ mkdir -p "$RESOURCES"
 echo "Copying binary..."
 cp "$BUILD_DIR/$APP_NAME" "$MACOS/"
 
+# Copy icon, generating it first if it hasn't been rendered yet
+ICON_SOURCE="Resources/AppIcon.icns"
+if [ ! -f "$ICON_SOURCE" ]; then
+    echo "Generating app icon..."
+    ICONSET="$(mktemp -d)/AppIcon.iconset"
+    swift Scripts/generate-icon.swift "$ICONSET"
+    mkdir -p Resources
+    iconutil -c icns "$ICONSET" -o "$ICON_SOURCE"
+fi
+echo "Copying icon..."
+cp "$ICON_SOURCE" "$RESOURCES/AppIcon.icns"
+
 # Create Info.plist
 echo "Creating Info.plist..."
 cat > "$CONTENTS/Info.plist" << EOF
@@ -36,6 +48,10 @@ cat > "$CONTENTS/Info.plist" << EOF
     <string>en</string>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.tohray.client</string>
     <key>CFBundleInfoDictionaryVersion</key>
