@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -8,6 +9,7 @@ class PostViewModel: ObservableObject {
     @Published var statusMessage: String = ""
     @Published var isError: Bool = false
     @Published var isPosting: Bool = false
+    @Published var postedURL: URL?
 
     private let client = TohrayAPIClient()
 
@@ -15,18 +17,18 @@ class PostViewModel: ObservableObject {
         isPosting = true
         statusMessage = "Posting..."
         isError = false
+        postedURL = nil
 
         do {
             let finalSlug = slug.isEmpty ? String(Int(Date().timeIntervalSince1970)) : slug
             let postURL = try await client.createPost(content: content, slug: finalSlug)
 
-            statusMessage = "✓ Posted successfully! URL: \(postURL)"
+            statusMessage = "✓ Posted successfully!"
+            postedURL = URL(string: postURL)
             isError = false
 
-            // Clear form after successful post
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.clear()
-            }
+            content = ""
+            slug = ""
         } catch {
             statusMessage = "Error: \(error.localizedDescription)"
             isError = true
@@ -35,11 +37,18 @@ class PostViewModel: ObservableObject {
         isPosting = false
     }
 
+    func copyURLToClipboard() {
+        guard let postedURL else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(postedURL.absoluteString, forType: .string)
+    }
+
     func clear() {
         content = ""
         slug = ""
         statusMessage = ""
         isError = false
+        postedURL = nil
     }
 }
 

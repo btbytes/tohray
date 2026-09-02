@@ -5,71 +5,68 @@ struct ContentView: View {
     @State private var showSettings = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Text("Tohray Client")
-                    .font(.title)
-                    .fontWeight(.bold)
+        VStack(spacing: 0) {
+            MarkdownEditor(text: $viewModel.content, focusOnAppear: true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Spacer()
-
-                Button(action: { showSettings = true }) {
-                    Image(systemName: "gear")
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.bottom, 10)
-
-            // Post form
             VStack(alignment: .leading, spacing: 10) {
-                Text("Slug (optional)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                TextField("Auto-generated if empty", text: $viewModel.slug)
+                TextField("Slug (optional, auto-generated if empty)", text: $viewModel.slug)
                     .textFieldStyle(.roundedBorder)
-
-                Text("Content")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                TextEditor(text: $viewModel.content)
-                    .frame(minHeight: 200)
-                    .border(Color.gray.opacity(0.2), width: 1)
                     .font(.body)
-            }
 
-            // Status message
-            if !viewModel.statusMessage.isEmpty {
-                HStack {
-                    Image(systemName: viewModel.isError ? "exclamationmark.circle" : "checkmark.circle")
-                    Text(viewModel.statusMessage)
-                }
-                .foregroundColor(viewModel.isError ? .red : .green)
-                .font(.caption)
-            }
+                if !viewModel.statusMessage.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Image(systemName: viewModel.isError ? "exclamationmark.circle" : "checkmark.circle")
+                            Text(viewModel.statusMessage)
+                        }
+                        .foregroundColor(viewModel.isError ? .red : .green)
 
-            // Buttons
-            HStack {
-                Spacer()
+                        if let postedURL = viewModel.postedURL {
+                            HStack(spacing: 8) {
+                                Link(postedURL.absoluteString, destination: postedURL)
+                                    .textSelection(.enabled)
 
-                Button("Clear") {
-                    viewModel.clear()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Post") {
-                    Task {
-                        await viewModel.post()
+                                Button(action: { viewModel.copyURLToClipboard() }) {
+                                    Image(systemName: "doc.on.doc")
+                                }
+                                .buttonStyle(.plain)
+                                .help("Copy link")
+                            }
+                        }
                     }
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.content.isEmpty || viewModel.isPosting)
+
+                HStack(spacing: 12) {
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gear")
+                            .imageScale(.large)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Settings")
+
+                    Spacer()
+
+                    Button("Clear") {
+                        viewModel.clear()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Post") {
+                        Task {
+                            await viewModel.post()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.content.isEmpty || viewModel.isPosting)
+                }
+                .controlSize(.large)
             }
+            .padding(14)
         }
-        .padding(30)
-        .frame(width: 600, height: 450)
+        .frame(minWidth: 480, minHeight: 360)
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
