@@ -70,6 +70,13 @@ struct S3Uploader {
         _ = try await upload(data: data, key: key, contentType: "text/plain", config: config)
     }
 
+    /// Computes the exact upload URL for a key, for display/diagnostics.
+    func uploadURL(for key: String, config: S3Config) -> URL? {
+        guard config.isConfigured else { return nil }
+        guard URL(string: config.endpoint)?.scheme != nil else { return nil }
+        return makeUploadURL(key: key, config: config)
+    }
+
     private func makeUploadURL(key: String, config: S3Config) -> URL? {
         if config.usesVirtualHostedStyle,
            let raw = URL(string: config.endpoint),

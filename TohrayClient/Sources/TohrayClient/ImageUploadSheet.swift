@@ -16,6 +16,7 @@ struct ImageUploadSheet: View {
     @State private var imageData: Data?
     @State private var isUploading = false
     @State private var error: String?
+    @State private var diagnosticMessage: String?
 
     enum Mode: String, CaseIterable {
         case paste = "Paste"
@@ -107,6 +108,24 @@ struct ImageUploadSheet: View {
         .frame(width: 480, height: 520)
         .onAppear {
             loadForCurrentMode()
+        }
+        .alert("S3 Upload Failed", isPresented: Binding(
+            get: { diagnosticMessage != nil },
+            set: { if !$0 { diagnosticMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                diagnosticMessage = nil
+            }
+            Button("Copy Report") {
+                if let diagnosticMessage {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(diagnosticMessage, forType: .string)
+                }
+            }
+        } message: {
+            Text(diagnosticMessage ?? "")
+                .font(.system(.caption, design: .monospaced))
+                .textSelection(.enabled)
         }
     }
 
@@ -220,6 +239,7 @@ struct ImageUploadSheet: View {
         guard let imageData, !isUploading else { return }
         isUploading = true
         error = nil
+        diagnosticMessage = nil
         let name = filename.trimmingCharacters(in: .whitespaces)
         let description = imageDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
@@ -229,6 +249,7 @@ struct ImageUploadSheet: View {
                 dismiss()
             } catch {
                 self.error = error.localizedDescription
+                self.diagnosticMessage = viewModel.diagnosticReport(for: name)
                 isUploading = false
             }
         }
@@ -261,6 +282,31 @@ class ImageUploadViewModel: ObservableObject {
         let contentType = contentType(for: filename)
         let url = try await uploader.upload(data: data, key: key, contentType: contentType, config: config)
         return markdownImage(url: url.absoluteString, alt: description.isEmpty ? displayName(filename) : description, description: description)
+    }
+
+    /// A diagnostic report describing the S3 configuration and the constructed
+    /// upload URL, shown when an upload fails.
+    func diagnosticReport(for filename: String) -> String {
+        let config = loadConfig()
+        let key = config.objectKey(for: filename)
+        let uploadURL = uploader.uploadURL(for: key, config: config)?.absoluteString ?? "(could not construct)"
+        let publicURL = config.publicURL(for: key)?.absoluteString ?? "(could not construct)"
+
+        var report: [String] = []
+        report.append("Provider: \(config.provider)")
+        report.append("Access Key ID: \(config.accessKeyID.isEmpty ? "(empty)" : config.accessKeyID)")
+        report.append("Secret Access Key: \(config.secretAccessKey.isEmpty ? "(empty)" : "••••••\(min(config.secretAccessKey.count, 4))")")
+        report.append("Session Token: \(config.sessionToken.isEmpty ? "(empty)" : "•\(min(config.sessionToken.count, 4))")")
+        report.append("Endpoint: \(config.endpoint.isEmpty ? "(empty)" : config.endpoint)")
+        report.append("ACL: \(config.acl.isEmpty ? "(empty)" : config.acl)")
+        report.append("Bucket: \(config.bucket.isEmpty ? "(empty)" : config.bucket)")
+        report.append("Root Dir: \(config.rootDir.isEmpty ? "(empty)" : config.rootDir)")
+        report.append("Public URL: \(config.publicURL.isEmpty ? "(empty)" : config.publicURL)")
+        report.append("Region: \(config.region)")
+        report.append("Object Key: \(key)")
+        report.append("Upload URL: \(uploadURL)")
+        report.append("Public File URL: \(publicURL)")
+        return report.joined(separator: "\n")
     }
 
     /// Builds a markdown image link. When a description is supplied it is used
