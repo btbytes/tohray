@@ -3,7 +3,7 @@ import Foundation
 
 enum S3Error: LocalizedError {
     case notConfigured
-    case invalidEndpoint
+    case invalidEndpoint(String)
     case invalidURL
     case invalidResponse(Int?, String)
     case encodingFailed
@@ -12,8 +12,8 @@ enum S3Error: LocalizedError {
         switch self {
         case .notConfigured:
             return "S3 storage is not configured. Add bucket details in Settings."
-        case .invalidEndpoint:
-            return "The S3 endpoint is not a valid URL (expected e.g. https://<account-id>.r2.cloudflarestorage.com). It must include a scheme such as https:// and no spaces."
+        case .invalidEndpoint(let reason):
+            return "S3 configuration error: \(reason)"
         case .invalidURL:
             return "Could not build an upload URL from the S3 configuration."
         case .invalidResponse(let code, let body):
@@ -32,12 +32,12 @@ struct S3Uploader {
     func upload(data: Data, key: String, contentType: String, config: S3Config) async throws -> URL {
         guard config.isConfigured else { throw S3Error.notConfigured }
 
-        guard let endpointURL = URL(string: config.endpoint), endpointURL.scheme != nil else {
-            throw S3Error.invalidEndpoint
-        }
-
-        guard let uploadURL = makeUploadURL(key: key, config: config) else {
-            throw S3Error.invalidURL
+        let uploadURL: URL
+        switch config.uploadURL(for: key) {
+        case .success(let url):
+            uploadURL = url
+        case .failure(let reason):
+            throw S3Error.invalidEndpoint(reason)
         }
 
         var request = URLRequest(url: uploadURL)
@@ -70,27 +70,9 @@ struct S3Uploader {
         _ = try await upload(data: data, key: key, contentType: "text/plain", config: config)
     }
 
-    /// Computes the exact upload URL for a key, for display/diagnostics.
-    func uploadURL(for key: String, config: S3Config) -> URL? {
-        guard config.isConfigured else { return nil }
-        guard URL(string: config.endpoint)?.scheme != nil else { return nil }
-        return makeUploadURL(key: key, config: config)
-    }
-
-    private func makeUploadURL(key: String, config: S3Config) -> URL? {
-        if config.usesVirtualHostedStyle,
-           let raw = URL(string: config.endpoint),
-           let host = raw.host {
-            var components = URLComponents()
-            components.scheme = raw.scheme
-            components.host = "\(config.bucket).\(host)"
-            components.percentEncodedPath = "/" + config.encodedKeyPath(key)
-            return components.url
-        }
-        guard var base = URL(string: config.endpoint) else { return nil }
-        base.appendPathComponent(config.bucket, isDirectory: true)
-        base.appendPathComponent(key, isDirectory: false)
-        return base
+    /// Computes the exact upload URL for a key, or the reason it cannot be built.
+    func uploadURL(for key: String, config: S3Config) -> S3Config.UploadURLResult {
+        config.uploadURL(for: key)
     }
 }
 

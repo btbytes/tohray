@@ -289,7 +289,11 @@ class ImageUploadViewModel: ObservableObject {
     func diagnosticReport(for filename: String) -> String {
         let config = loadConfig()
         let key = config.objectKey(for: filename)
-        let uploadURL = uploader.uploadURL(for: key, config: config)?.absoluteString ?? "(could not construct — \(config.constructionFailureReason ?? "unknown"))"
+        let uploadURL: String
+        switch uploader.uploadURL(for: key, config: config) {
+        case .success(let url): uploadURL = url.absoluteString
+        case .failure(let reason): uploadURL = "(could not construct — \(reason))"
+        }
         let publicURL = config.publicURL(for: key)?.absoluteString ?? "(could not construct)"
 
         var report: [String] = []

@@ -45,21 +45,44 @@ struct S3Config: Equatable {
         return nil
     }
 
-    /// Explains why an upload URL cannot be constructed, or nil if it can.
-    var constructionFailureReason: String? {
+    /// The outcome of trying to build an upload URL for an object key: either
+    /// the URL, or the precise reason construction failed.
+    enum UploadURLResult: Equatable {
+        case success(URL)
+        case failure(String)
+    }
+
+    /// Builds the HTTP PUT endpoint for an object key, or explains why it could
+    /// not be built. The reason is always in step with the construction logic so
+    /// diagnostics never report a misleading "unknown".
+    func uploadURL(for key: String) -> UploadURLResult {
         if !isConfigured {
-            return "one or more required fields are empty"
+            return .failure("required fields empty (Access Key ID, Secret Access Key, Endpoint, and Bucket must all be set)")
         }
         if let issue = endpointIssue {
-            return issue
+            return .failure(issue)
         }
-        if let url = URL(string: endpoint), url.host == nil {
-            return "endpoint has no hostname"
+        guard let raw = URL(string: endpoint), let host = raw.host else {
+            return .failure("endpoint is not a valid URL with a hostname")
         }
-        if bucket.isEmpty {
-            return "bucket is empty"
+
+        if usesVirtualHostedStyle {
+            var components = URLComponents()
+            components.scheme = raw.scheme
+            components.host = "\(bucket).\(host)"
+            components.percentEncodedPath = "/" + encodedKeyPath(key)
+            if let url = components.url {
+                return .success(url)
+            }
+            return .failure("could not form a virtual-hosted URL from bucket '\(bucket)' and endpoint '\(host)'")
         }
-        return nil
+
+        guard var base = URL(string: endpoint) else {
+            return .failure("endpoint is not a valid URL")
+        }
+        base.appendPathComponent(bucket, isDirectory: true)
+        base.appendPathComponent(key, isDirectory: false)
+        return .success(base)
     }
 
     /// The S3 signing region. Cloudflare R2 always uses `auto`; AWS typically
