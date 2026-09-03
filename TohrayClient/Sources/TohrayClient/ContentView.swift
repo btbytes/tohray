@@ -4,8 +4,8 @@ struct ContentView: View {
     @StateObject private var viewModel = PostViewModel()
     @State private var showSettings = false
     @State private var showPreview = false
-    @State private var showEdit = false
     @State private var showImageUpload = false
+    @State private var sidebarVisibility: NavigationSplitViewVisibility = .detailOnly
     @StateObject private var editorRef = EditorReference()
 
     /// Box that owns the markdown editor's coordinator so insertions can reach
@@ -15,8 +15,12 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            MarkdownEditor(
+        NavigationSplitView(columnVisibility: $sidebarVisibility) {
+            PostSidebarView(viewModel: viewModel)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
+        } detail: {
+            VStack(spacing: 0) {
+                MarkdownEditor(
                 text: $viewModel.content,
                 focusOnAppear: true,
                 coordinatorRef: editorRef.coordinators,
@@ -77,13 +81,13 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .help("Settings")
 
-                    Button(action: { showEdit = true }) {
-                        Image(systemName: "square.and.pencil")
+                    Button(action: toggleSidebar) {
+                        Image(systemName: "sidebar.left")
                             .imageScale(.large)
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut("e", modifiers: .command)
-                    .help("Edit an existing entry (⌘E)")
+                    .help("Past posts (⌘E)")
 
                     Spacer()
 
@@ -119,15 +123,11 @@ struct ContentView: View {
                 .controlSize(.large)
             }
             .padding(14)
+            }
         }
-        .frame(minWidth: 480, minHeight: 360)
+        .frame(minWidth: 700, minHeight: 400)
         .sheet(isPresented: $showSettings) {
             SettingsView()
-        }
-        .sheet(isPresented: $showEdit) {
-            EditPostListView(viewModel: viewModel) {
-                showEdit = false
-            }
         }
         .sheet(isPresented: $showPreview) {
             MarkdownPreviewView(markdown: viewModel.content)
@@ -150,6 +150,12 @@ struct ContentView: View {
 
     private func togglePreview() {
         showPreview.toggle()
+    }
+
+    private func toggleSidebar() {
+        withAnimation {
+            sidebarVisibility = sidebarVisibility == .all ? .detailOnly : .all
+        }
     }
 
     private func presentImageUpload() {
@@ -343,23 +349,34 @@ struct SettingsView: View {
     }
 }
 
-struct EditPostListView: View {
+/// Slide-out sidebar listing past posts. Selecting a post loads it into the
+/// editor via `startEdit`. Shown/hidden with ⌘E.
+struct PostSidebarView: View {
     @ObservedObject var viewModel: PostViewModel
-    @Environment(\.dismiss) private var dismiss
-    var onSelect: () -> Void
     @State private var selectedID: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Edit Post")
-                .font(.title2)
-                .fontWeight(.bold)
-                .padding()
+            HStack {
+                Text("Posts")
+                    .font(.headline)
+                Spacer()
+                Button(action: {
+                    Task { await viewModel.loadPosts() }
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+                .help("Refresh")
+                .disabled(viewModel.isLoadingPosts)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
             Divider()
 
             Group {
-                if viewModel.isLoadingPosts {
+                if viewModel.isLoadingPosts && viewModel.posts.isEmpty {
                     ProgressView("Loading posts...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.posts.isEmpty {
@@ -379,8 +396,6 @@ struct EditPostListView: View {
                         Button {
                             selectedID = post.id
                             viewModel.startEdit(post)
-                            onSelect()
-                            dismiss()
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -404,19 +419,7 @@ struct EditPostListView: View {
                     }
                 }
             }
-
-            Divider()
-
-            HStack {
-                Spacer()
-                Button("Cancel") {
-                    dismiss()
-                }
-                .buttonStyle(.bordered)
-            }
-            .padding()
         }
-        .frame(width: 520, height: 420)
         .task {
             await viewModel.loadPosts()
         }
