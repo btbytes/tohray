@@ -189,12 +189,13 @@ class SettingsViewModel: ObservableObject {
         isError = false
 
         let uploader = S3Uploader()
+        let config = s3Config
         do {
-            try await uploader.testConnection(config: s3Config)
+            try await uploader.testConnection(config: config)
             statusMessage = "✓ S3 upload successful!"
             isError = false
         } catch {
-            statusMessage = "✗ S3 upload failed: \(error.localizedDescription)"
+            statusMessage = "✗ S3 upload failed: \(error.localizedDescription)\n\n\(config.diagnosticReport())"
             isError = true
         }
     }

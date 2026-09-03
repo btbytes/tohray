@@ -287,36 +287,7 @@ class ImageUploadViewModel: ObservableObject {
     /// A diagnostic report describing the S3 configuration and the constructed
     /// upload URL, shown when an upload fails.
     func diagnosticReport(for filename: String) -> String {
-        let config = loadConfig()
-        let key = config.objectKey(for: filename)
-        let uploadURL: String
-        switch uploader.uploadURL(for: key, config: config) {
-        case .success(let url): uploadURL = url.absoluteString
-        case .failure(let reason): uploadURL = "(could not construct — \(reason))"
-        }
-        let publicURL = config.publicURL(for: key)?.absoluteString ?? "(could not construct)"
-
-        var report: [String] = []
-        report.append("Provider: \(config.provider)")
-        report.append("Access Key ID: \(config.accessKeyID.isEmpty ? "(empty)" : config.accessKeyID)")
-        report.append("Secret Access Key: \(config.secretAccessKey.isEmpty ? "(empty)" : "••••••\(min(config.secretAccessKey.count, 4))")")
-        report.append("Session Token: \(config.sessionToken.isEmpty ? "(empty)" : "•\(min(config.sessionToken.count, 4))")")
-        report.append("Endpoint: \(config.endpoint.isEmpty ? "(empty)" : config.endpoint)")
-        report.append("ACL: \(config.acl.isEmpty ? "(empty)" : config.acl)")
-        report.append("Bucket: \(config.bucket.isEmpty ? "(empty)" : config.bucket)")
-        report.append("Root Dir: \(config.rootDir.isEmpty ? "(empty)" : config.rootDir)")
-        report.append("Public URL: \(config.publicURL.isEmpty ? "(empty)" : config.publicURL)")
-        report.append("Region: \(config.region)")
-        report.append("Object Key: \(key)")
-        report.append("Upload URL: \(uploadURL)")
-        report.append("Public File URL: \(publicURL)")
-        if let issue = config.endpointIssue {
-            report.append("Endpoint issue: \(issue)")
-        }
-        if !config.isConfigured {
-            report.append("Config issue: missing required fields (Access Key ID, Secret Access Key, Endpoint, and Bucket must all be set).")
-        }
-        return report.joined(separator: "\n")
+        loadConfig().diagnosticReport(for: filename)
     }
 
     /// Builds a markdown image link. When a description is supplied it is used

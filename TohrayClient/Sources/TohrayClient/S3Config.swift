@@ -163,4 +163,50 @@ struct S3Config: Equatable {
         // conventional separator here.
         return key.addingPercentEncoding(withAllowedCharacters: allowed) ?? key
     }
+
+    /// A multi-line diagnostic report describing the configuration and the
+    /// constructed upload URL, used when an upload or config test fails. When
+    /// `filename` is nil only the configuration is described (no object key).
+    func diagnosticReport(for filename: String? = nil) -> String {
+        let key = filename.map(objectKey(for:))
+        let uploadURLText: String
+        if let key {
+            switch uploadURL(for: key) {
+            case .success(let url): uploadURLText = url.absoluteString
+            case .failure(let reason): uploadURLText = "(could not construct — \(reason))"
+            }
+        } else {
+            uploadURLText = "(no object — config test only)"
+        }
+        let publicURLText: String
+        if let key {
+            publicURLText = self.publicURL(for: key)?.absoluteString ?? "(could not construct)"
+        } else {
+            publicURLText = "(no object — config test only)"
+        }
+
+        var report: [String] = []
+        report.append("Provider: \(provider)")
+        report.append("Access Key ID: \(accessKeyID.isEmpty ? "(empty)" : accessKeyID)")
+        report.append("Secret Access Key: \(secretAccessKey.isEmpty ? "(empty)" : "••••••\(min(secretAccessKey.count, 4))")")
+        report.append("Session Token: \(sessionToken.isEmpty ? "(empty)" : "•\(min(sessionToken.count, 4))")")
+        report.append("Endpoint: \(endpoint.isEmpty ? "(empty)" : endpoint)")
+        report.append("ACL: \(acl.isEmpty ? "(empty)" : acl)")
+        report.append("Bucket: \(bucket.isEmpty ? "(empty)" : bucket)")
+        report.append("Root Dir: \(rootDir.isEmpty ? "(empty)" : rootDir)")
+        report.append("Public URL: \(publicURL.isEmpty ? "(empty)" : publicURL)")
+        report.append("Region: \(region)")
+        if let key {
+            report.append("Object Key: \(key)")
+        }
+        report.append("Upload URL: \(uploadURLText)")
+        report.append("Public File URL: \(publicURLText)")
+        if let issue = endpointIssue {
+            report.append("Endpoint issue: \(issue)")
+        }
+        if !isConfigured {
+            report.append("Config issue: missing required fields (Access Key ID, Secret Access Key, Endpoint, and Bucket must all be set).")
+        }
+        return report.joined(separator: "\n")
+    }
 }
