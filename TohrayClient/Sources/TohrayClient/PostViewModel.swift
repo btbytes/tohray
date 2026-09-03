@@ -10,8 +10,13 @@ class PostViewModel: ObservableObject {
     @Published var isError: Bool = false
     @Published var isPosting: Bool = false
     @Published var postedURL: URL?
+    @Published var editingSlug: String?
+    @Published var posts: [TohrayPost] = []
+    @Published var isLoadingPosts: Bool = false
 
     private let client = TohrayAPIClient()
+
+    var isEditing: Bool { editingSlug != nil }
 
     func post() async {
         isPosting = true
@@ -21,20 +26,52 @@ class PostViewModel: ObservableObject {
 
         do {
             let finalSlug = slug.isEmpty ? String(Int(Date().timeIntervalSince1970)) : slug
-            let postURL = try await client.createPost(content: content, slug: finalSlug)
+            let postURL: String
+            if isEditing {
+                postURL = try await client.editPost(content: content, slug: finalSlug)
+            } else {
+                postURL = try await client.createPost(content: content, slug: finalSlug)
+            }
 
-            statusMessage = "✓ Posted successfully!"
+            statusMessage = "✓ Saved successfully!"
             postedURL = URL(string: postURL)
             isError = false
 
             content = ""
             slug = ""
+            editingSlug = nil
         } catch {
             statusMessage = "Error: \(error.localizedDescription)"
             isError = true
         }
 
         isPosting = false
+    }
+
+    func loadPosts() async {
+        isLoadingPosts = true
+        defer { isLoadingPosts = false }
+
+        do {
+            posts = try await client.fetchPosts()
+                .sorted { $0.created > $1.created }
+        } catch {
+            statusMessage = "Error loading posts: \(error.localizedDescription)"
+            isError = true
+        }
+    }
+
+    func startEdit(_ post: TohrayPost) {
+        slug = post.slug
+        content = post.content
+        editingSlug = post.slug
+        statusMessage = ""
+        isError = false
+        postedURL = nil
+    }
+
+    func stopEditing() {
+        editingSlug = nil
     }
 
     func copyURLToClipboard() {
@@ -49,6 +86,7 @@ class PostViewModel: ObservableObject {
         statusMessage = ""
         isError = false
         postedURL = nil
+        editingSlug = nil
     }
 }
 

@@ -26,6 +26,14 @@ enum TohrayError: LocalizedError {
     }
 }
 
+struct TohrayPost: Codable, Identifiable {
+    let slug: String
+    let created: String
+    let content: String
+
+    var id: String { slug }
+}
+
 class TohrayAPIClient {
     private let keychain = KeychainHelper()
     private var cookies: [HTTPCookie] = []
@@ -35,6 +43,57 @@ class TohrayAPIClient {
     }
 
     func createPost(content: String, slug: String) async throws -> String {
+        return try await submitPost(content: content, slug: slug, path: "/write")
+    }
+
+    func editPost(content: String, slug: String) async throws -> String {
+        let path = "/edit/\(slug)"
+        guard let baseURL = keychain.getURL() else {
+            throw TohrayError.noCredentials
+        }
+        _ = try await submitPost(content: content, slug: slug, path: path)
+        return "\(baseURL)/\(slug)"
+    }
+
+    func fetchPosts() async throws -> [TohrayPost] {
+        guard let baseURL = keychain.getURL(),
+              let username = keychain.getUsername(),
+              let password = keychain.getPassword() else {
+            throw TohrayError.noCredentials
+        }
+
+        _ = try await login(baseURL: baseURL, username: username, password: password)
+
+        guard let url = URL(string: "\(baseURL)/export") else {
+            throw TohrayError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        addCookies(to: &request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw TohrayError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw TohrayError.postFailed("HTTP \(httpResponse.statusCode)")
+        }
+
+        struct ExportResponse: Codable {
+            let posts: [TohrayPost]
+        }
+
+        do {
+            let decoded = try JSONDecoder().decode(ExportResponse.self, from: data)
+            return decoded.posts
+        } catch {
+            throw TohrayError.invalidResponse
+        }
+    }
+
+    private func submitPost(content: String, slug: String, path: String) async throws -> String {
         guard let baseURL = keychain.getURL(),
               let username = keychain.getUsername(),
               let password = keychain.getPassword() else {
@@ -44,11 +103,11 @@ class TohrayAPIClient {
         // Login first
         _ = try await login(baseURL: baseURL, username: username, password: password)
 
-        // Get write page to extract CSRF token
-        let csrfToken = try await getCSRFToken(baseURL: baseURL, path: "/write")
+        // Get the page to extract CSRF token
+        let csrfToken = try await getCSRFToken(baseURL: baseURL, path: path)
 
-        // Create post
-        guard let url = URL(string: "\(baseURL)/write") else {
+        // Submit post
+        guard let url = URL(string: "\(baseURL)\(path)") else {
             throw TohrayError.invalidURL
         }
 
@@ -63,10 +122,7 @@ class TohrayAPIClient {
             "CSRFToken": csrfToken
         ]
 
-        request.httpBody = formData
-            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }
-            .joined(separator: "&")
-            .data(using: .utf8)
+        request.httpBody = urlEncodedForm(formData)
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -79,6 +135,16 @@ class TohrayAPIClient {
         }
 
         return "\(baseURL)/\(slug)"
+    }
+
+    private func urlEncodedForm(_ fields: [String: String]) -> Data? {
+        let allowed = CharacterSet.alphanumerics
+        let encoded = fields
+            .map { key, value in
+                "\(key)=\(value.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")"
+            }
+            .joined(separator: "&")
+        return encoded.data(using: .utf8)
     }
 
     private func login(baseURL: String, username: String, password: String) async throws -> [HTTPCookie] {
@@ -100,10 +166,7 @@ class TohrayAPIClient {
             "CSRFToken": csrfToken
         ]
 
-        request.httpBody = formData
-            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }
-            .joined(separator: "&")
-            .data(using: .utf8)
+        request.httpBody = urlEncodedForm(formData)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

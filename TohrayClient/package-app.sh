@@ -67,7 +67,7 @@ cat > "$CONTENTS/Info.plist" << EOF
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2024</string>
+    <string>Copyright © 2026 Pradeep Gowda</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
