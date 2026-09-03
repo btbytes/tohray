@@ -113,15 +113,15 @@ class SettingsViewModel: ObservableObject {
 
     var s3Config: S3Config {
         var config = S3Config()
-        config.provider = s3Provider
-        config.accessKeyID = s3AccessKeyID
-        config.secretAccessKey = s3SecretAccessKey
-        config.sessionToken = s3SessionToken
-        config.endpoint = s3Endpoint
-        config.acl = s3ACL
-        config.publicURL = s3PublicURL
-        config.rootDir = s3RootDir
-        config.bucket = s3Bucket
+        config.provider = s3Provider.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.accessKeyID = s3AccessKeyID.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.secretAccessKey = s3SecretAccessKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.sessionToken = s3SessionToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.endpoint = s3Endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.acl = s3ACL.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.publicURL = s3PublicURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.rootDir = s3RootDir.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.bucket = s3Bucket.trimmingCharacters(in: .whitespacesAndNewlines)
         return config
     }
 
