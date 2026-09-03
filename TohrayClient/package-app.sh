@@ -53,7 +53,7 @@ cat > "$CONTENTS/Info.plist" << EOF
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.tohray.client</string>
+    <string>dev.fly.tohray</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

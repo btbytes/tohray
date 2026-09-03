@@ -95,25 +95,76 @@ class SettingsViewModel: ObservableObject {
     @Published var url: String = ""
     @Published var username: String = ""
     @Published var password: String = ""
+
+    @Published var s3Provider = "Cloudflare"
+    @Published var s3AccessKeyID = ""
+    @Published var s3SecretAccessKey = ""
+    @Published var s3SessionToken = ""
+    @Published var s3Endpoint = ""
+    @Published var s3ACL = "private"
+    @Published var s3PublicURL = ""
+    @Published var s3RootDir = "/appname/"
+    @Published var s3Bucket = ""
+
     @Published var statusMessage: String = ""
     @Published var isError: Bool = false
 
     private let keychain = KeychainHelper()
+
+    var s3Config: S3Config {
+        var config = S3Config()
+        config.provider = s3Provider
+        config.accessKeyID = s3AccessKeyID
+        config.secretAccessKey = s3SecretAccessKey
+        config.sessionToken = s3SessionToken
+        config.endpoint = s3Endpoint
+        config.acl = s3ACL
+        config.publicURL = s3PublicURL
+        config.rootDir = s3RootDir
+        config.bucket = s3Bucket
+        return config
+    }
 
     init() {
         loadFromKeychain()
     }
 
     func loadFromKeychain() {
-        url = keychain.getURL() ?? "http://localhost:8080"
-        username = keychain.getUsername() ?? ""
-        password = keychain.getPassword() ?? ""
+        let stored = keychain.load()
+
+        url = stored.url
+        username = stored.username
+        password = stored.password
+
+        s3Provider = stored.s3Provider
+        s3AccessKeyID = stored.s3AccessKeyID
+        s3SecretAccessKey = stored.s3SecretAccessKey
+        s3SessionToken = stored.s3SessionToken
+        s3Endpoint = stored.s3Endpoint
+        s3ACL = stored.s3ACL
+        s3PublicURL = stored.s3PublicURL
+        s3RootDir = stored.s3RootDir
+        s3Bucket = stored.s3Bucket
     }
 
     func save() {
-        keychain.saveURL(url)
-        keychain.saveUsername(username)
-        keychain.savePassword(password)
+        var stored = StoredSettings()
+
+        stored.url = url
+        stored.username = username
+        stored.password = password
+
+        stored.s3Provider = s3Provider
+        stored.s3AccessKeyID = s3AccessKeyID
+        stored.s3SecretAccessKey = s3SecretAccessKey
+        stored.s3SessionToken = s3SessionToken
+        stored.s3Endpoint = s3Endpoint
+        stored.s3ACL = s3ACL
+        stored.s3PublicURL = s3PublicURL
+        stored.s3RootDir = s3RootDir
+        stored.s3Bucket = s3Bucket
+
+        keychain.save(stored)
         statusMessage = "Settings saved to Keychain"
         isError = false
     }
@@ -129,6 +180,21 @@ class SettingsViewModel: ObservableObject {
             isError = false
         } catch {
             statusMessage = "✗ Connection failed: \(error.localizedDescription)"
+            isError = true
+        }
+    }
+
+    func testS3Upload() async {
+        statusMessage = "Testing S3 upload..."
+        isError = false
+
+        let uploader = S3Uploader()
+        do {
+            try await uploader.testConnection(config: s3Config)
+            statusMessage = "✓ S3 upload successful!"
+            isError = false
+        } catch {
+            statusMessage = "✗ S3 upload failed: \(error.localizedDescription)"
             isError = true
         }
     }

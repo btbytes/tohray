@@ -124,4 +124,5 @@ private struct HTMLPreview: NSViewRepresentable {
 extension Notification.Name {
     static let toggleMarkdownPreview = Notification.Name("toggleMarkdownPreview")
     static let openSettings = Notification.Name("openSettings")
+    static let insertImage = Notification.Name("insertImage")
 }

@@ -21,6 +21,13 @@ struct TohrayApp: App {
                     NotificationCenter.default.post(name: .toggleMarkdownPreview, object: nil)
                 }
                 .keyboardShortcut("p", modifiers: .command)
+
+                Divider()
+
+                Button("Insert Image…") {
+                    NotificationCenter.default.post(name: .insertImage, object: nil)
+                }
+                .keyboardShortcut("i", modifiers: .command)
             }
         }
     }

@@ -48,23 +48,25 @@ class TohrayAPIClient {
 
     func editPost(content: String, slug: String) async throws -> String {
         let path = "/edit/\(slug)"
-        guard let baseURL = keychain.getURL() else {
+        let settings = keychain.load()
+        guard !settings.url.isEmpty else {
             throw TohrayError.noCredentials
         }
         _ = try await submitPost(content: content, slug: slug, path: path)
-        return "\(baseURL)/\(slug)"
+        return "\(settings.url)/\(slug)"
     }
 
     func fetchPosts() async throws -> [TohrayPost] {
-        guard let baseURL = keychain.getURL(),
-              let username = keychain.getUsername(),
-              let password = keychain.getPassword() else {
+        let settings = keychain.load()
+        guard !settings.url.isEmpty,
+              !settings.username.isEmpty,
+              !settings.password.isEmpty else {
             throw TohrayError.noCredentials
         }
 
-        _ = try await login(baseURL: baseURL, username: username, password: password)
+        _ = try await login(baseURL: settings.url, username: settings.username, password: settings.password)
 
-        guard let url = URL(string: "\(baseURL)/export") else {
+        guard let url = URL(string: "\(settings.url)/export") else {
             throw TohrayError.invalidURL
         }
 
@@ -94,14 +96,17 @@ class TohrayAPIClient {
     }
 
     private func submitPost(content: String, slug: String, path: String) async throws -> String {
-        guard let baseURL = keychain.getURL(),
-              let username = keychain.getUsername(),
-              let password = keychain.getPassword() else {
+        let settings = keychain.load()
+        guard !settings.url.isEmpty,
+              !settings.username.isEmpty,
+              !settings.password.isEmpty else {
             throw TohrayError.noCredentials
         }
 
+        let baseURL = settings.url
+
         // Login first
-        _ = try await login(baseURL: baseURL, username: username, password: password)
+        _ = try await login(baseURL: baseURL, username: settings.username, password: settings.password)
 
         // Get the page to extract CSRF token
         let csrfToken = try await getCSRFToken(baseURL: baseURL, path: path)

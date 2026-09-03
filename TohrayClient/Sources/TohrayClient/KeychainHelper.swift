@@ -1,81 +1,96 @@
 import Foundation
 import Security
 
+/// All settings persisted in the login keychain. Stored as a single JSON blob
+/// under one keychain item so macOS only has to ask for access once, instead of
+/// once per individual setting.
+struct StoredSettings: Codable, Equatable {
+    var url = "http://localhost:8080"
+    var username = ""
+    var password = ""
+
+    var s3Provider = "Cloudflare"
+    var s3AccessKeyID = ""
+    var s3SecretAccessKey = ""
+    var s3SessionToken = ""
+    var s3Endpoint = ""
+    var s3ACL = "private"
+    var s3PublicURL = ""
+    var s3RootDir = "/appname/"
+    var s3Bucket = ""
+
+    static let empty = StoredSettings()
+}
+
 class KeychainHelper {
-    private let service = "com.tohray.client"
+    private let service = "dev.fly.tohray"
+    private let account = "settings"
 
-    // MARK: - URL
-    func saveURL(_ url: String) {
-        save(key: "url", value: url)
+    /// Reads the consolidated settings blob. Never throws; empty settings are
+    /// returned if nothing is stored yet.
+    func load() -> StoredSettings {
+        var settings = StoredSettings.empty
+        loadData { data in
+            if let data {
+                settings = (try? JSONDecoder().decode(StoredSettings.self, from: data)) ?? StoredSettings.empty
+            }
+        }
+        return settings
     }
 
-    func getURL() -> String? {
-        return get(key: "url")
+    /// Writes the consolidated settings blob as a single keychain item.
+    func save(_ settings: StoredSettings) {
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        upsert(data: data)
     }
 
-    // MARK: - Username
-    func saveUsername(_ username: String) {
-        save(key: "username", value: username)
-    }
+    // MARK: - Keychain primitives
 
-    func getUsername() -> String? {
-        return get(key: "username")
-    }
-
-    // MARK: - Password
-    func savePassword(_ password: String) {
-        save(key: "password", value: password)
-    }
-
-    func getPassword() -> String? {
-        return get(key: "password")
-    }
-
-    // MARK: - Generic Save/Get
-    private func save(key: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-
-        // Delete any existing item
-        delete(key: key)
-
-        // Add new item
+    private func loadData(_ completion: (Data?) -> Void) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data
-        ]
-
-        SecItemAdd(query as CFDictionary, nil)
-    }
-
-    private func get(key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let string = String(data: data, encoding: .utf8) else {
-            return nil
+        if status == errSecItemNotFound {
+            completion(nil)
+            return
         }
-
-        return string
+        guard status == errSecSuccess,
+              let data = result as? Data else {
+            completion(nil)
+            return
+        }
+        completion(data)
     }
 
-    private func delete(key: String) {
-        let query: [String: Any] = [
+    private func upsert(data: Data) {
+        let baseQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: account
         ]
 
-        SecItemDelete(query as CFDictionary)
+        // Try updating first; if the item doesn't exist, add it.
+        let updateStatus = SecItemUpdate(
+            baseQuery as CFDictionary,
+            [kSecValueData as String: data] as CFDictionary
+        )
+        if updateStatus == errSecSuccess {
+            return
+        }
+
+        if updateStatus == errSecItemNotFound {
+            var query = baseQuery
+            query[kSecValueData as String] = data
+            query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            SecItemAdd(query as CFDictionary, nil)
+        }
     }
 }
