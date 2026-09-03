@@ -58,14 +58,13 @@ class TohrayAPIClient {
 
     func fetchPosts() async throws -> [TohrayPost] {
         let settings = keychain.load()
-        guard !settings.url.isEmpty,
-              !settings.username.isEmpty,
-              !settings.password.isEmpty else {
+        guard !settings.url.isEmpty else {
             throw TohrayError.noCredentials
         }
 
-        _ = try await login(baseURL: settings.url, username: settings.username, password: settings.password)
-
+        // /export is a public endpoint (see exportAll in views.nim), so no
+        // login is needed. Logging in here only surfaced credential problems
+        // that have nothing to do with reading posts.
         guard let url = URL(string: "\(settings.url)/export") else {
             throw TohrayError.invalidURL
         }
