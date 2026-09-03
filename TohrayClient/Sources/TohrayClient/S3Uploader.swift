@@ -13,7 +13,7 @@ enum S3Error: LocalizedError {
         case .notConfigured:
             return "S3 storage is not configured. Add bucket details in Settings."
         case .invalidEndpoint:
-            return "The S3 endpoint is not a valid URL."
+            return "The S3 endpoint is not a valid URL (expected e.g. https://<account-id>.r2.cloudflarestorage.com). It must include a scheme such as https:// and no spaces."
         case .invalidURL:
             return "Could not build an upload URL from the S3 configuration."
         case .invalidResponse(let code, let body):
@@ -31,6 +31,11 @@ struct S3Uploader {
     /// resulting public URL.
     func upload(data: Data, key: String, contentType: String, config: S3Config) async throws -> URL {
         guard config.isConfigured else { throw S3Error.notConfigured }
+
+        guard let endpointURL = URL(string: config.endpoint), endpointURL.scheme != nil else {
+            throw S3Error.invalidEndpoint
+        }
+
         guard let uploadURL = makeUploadURL(key: key, config: config) else {
             throw S3Error.invalidURL
         }
@@ -72,11 +77,13 @@ struct S3Uploader {
             var components = URLComponents()
             components.scheme = raw.scheme
             components.host = "\(config.bucket).\(host)"
-            components.path = "/" + key
+            components.percentEncodedPath = "/" + config.encodedKeyPath(key)
             return components.url
         }
-        let base = config.endpoint.hasSuffix("/") ? config.endpoint : config.endpoint + "/"
-        return URL(string: base + config.bucket + "/" + key)
+        guard var base = URL(string: config.endpoint) else { return nil }
+        base.appendPathComponent(config.bucket, isDirectory: true)
+        base.appendPathComponent(key, isDirectory: false)
+        return base
     }
 }
 

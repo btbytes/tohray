@@ -290,6 +290,13 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .help("e.g. https://<account>.r2.cloudflarestorage.com or https://s3.amazonaws.com")
 
+                if let issue = viewModel.s3Config.endpointIssue {
+                    Label(issue, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 aclPicker
 
                 TextField("Bucket", text: $viewModel.s3Bucket)

@@ -25,6 +25,26 @@ struct S3Config: Equatable {
             && !bucket.isEmpty
     }
 
+    /// A human-readable explanation of why the endpoint is unusable, or nil if
+    /// it is well-formed (or empty, which is handled elsewhere).
+    var endpointIssue: String? {
+        let trimmed = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        if trimmed != endpoint {
+            return "The endpoint has leading or trailing whitespace. It will fail to parse."
+        }
+        guard let url = URL(string: trimmed) else {
+            return "The endpoint is not a valid URL."
+        }
+        if url.scheme == nil {
+            return "The endpoint must include a scheme, e.g. https://."
+        }
+        if url.host == nil {
+            return "The endpoint is missing a hostname."
+        }
+        return nil
+    }
+
     /// The S3 signing region. Cloudflare R2 always uses `auto`; AWS typically
     /// embeds the region in the endpoint host (e.g. s3.<region>.amazonaws.com).
     var region: String {
@@ -71,16 +91,36 @@ struct S3Config: Equatable {
 
     /// The fully-qualified URL an uploaded object will be publicly reachable at.
     /// Prefers the user-supplied public URL; falls back to deriving one from the
-    /// endpoint and bucket.
+    /// endpoint and bucket. Returns nil only if the base URL is unusable.
     func publicURL(for key: String) -> URL? {
+        let encodedKey = encodedKeyPath(key)
+
         if !publicURL.isEmpty {
-            let base = publicURL.hasSuffix("/") ? publicURL : publicURL + "/"
-            return URL(string: base + key)
+            guard var base = URL(string: publicURL) else { return nil }
+            base.appendPathComponent(key, isDirectory: false)
+            return base
         }
+
         if usesVirtualHostedStyle, let host = endpointHost, let scheme = URL(string: endpoint)?.scheme {
-            return URL(string: "\(scheme)://\(bucket).\(host)/\(key)")
+            var components = URLComponents()
+            components.scheme = scheme
+            components.host = "\(bucket).\(host)"
+            components.percentEncodedPath = "/" + encodedKey
+            return components.url
         }
-        let base = endpoint.hasSuffix("/") ? endpoint : endpoint + "/"
-        return URL(string: base + bucket + "/" + key)
+
+        guard var base = URL(string: endpoint) else { return nil }
+        base.appendPathComponent(bucket, isDirectory: true)
+        base.appendPathComponent(key, isDirectory: false)
+        return base
+    }
+
+    /// Percent-encodes a path segment so characters like spaces, `#`, `?`, and
+    /// `%` don't break `URL(String:)` parsing.
+    func encodedKeyPath(_ key: String) -> String {
+        let allowed = CharacterSet.urlPathAllowed
+        // urlPathAllowed keeps "/" — fine for nested keys, and it is the
+        // conventional separator here.
+        return key.addingPercentEncoding(withAllowedCharacters: allowed) ?? key
     }
 }
