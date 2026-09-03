@@ -289,7 +289,7 @@ class ImageUploadViewModel: ObservableObject {
     func diagnosticReport(for filename: String) -> String {
         let config = loadConfig()
         let key = config.objectKey(for: filename)
-        let uploadURL = uploader.uploadURL(for: key, config: config)?.absoluteString ?? "(could not construct)"
+        let uploadURL = uploader.uploadURL(for: key, config: config)?.absoluteString ?? "(could not construct — \(config.constructionFailureReason ?? "unknown"))"
         let publicURL = config.publicURL(for: key)?.absoluteString ?? "(could not construct)"
 
         var report: [String] = []
@@ -306,6 +306,12 @@ class ImageUploadViewModel: ObservableObject {
         report.append("Object Key: \(key)")
         report.append("Upload URL: \(uploadURL)")
         report.append("Public File URL: \(publicURL)")
+        if let issue = config.endpointIssue {
+            report.append("Endpoint issue: \(issue)")
+        }
+        if !config.isConfigured {
+            report.append("Config issue: missing required fields (Access Key ID, Secret Access Key, Endpoint, and Bucket must all be set).")
+        }
         return report.joined(separator: "\n")
     }
 

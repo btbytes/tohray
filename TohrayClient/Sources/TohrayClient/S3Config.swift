@@ -45,6 +45,23 @@ struct S3Config: Equatable {
         return nil
     }
 
+    /// Explains why an upload URL cannot be constructed, or nil if it can.
+    var constructionFailureReason: String? {
+        if !isConfigured {
+            return "one or more required fields are empty"
+        }
+        if let issue = endpointIssue {
+            return issue
+        }
+        if let url = URL(string: endpoint), url.host == nil {
+            return "endpoint has no hostname"
+        }
+        if bucket.isEmpty {
+            return "bucket is empty"
+        }
+        return nil
+    }
+
     /// The S3 signing region. Cloudflare R2 always uses `auto`; AWS typically
     /// embeds the region in the endpoint host (e.g. s3.<region>.amazonaws.com).
     var region: String {
