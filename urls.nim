@@ -10,7 +10,8 @@ const urlPatterns* = @[
   pattern("/edit/{slug}", editPost, @[HttpGet, HttpPost], name = "edit"),
   pattern("/delete/{slug}", deletePost, @[HttpGet, HttpPost], name = "delete"),
   pattern("/export", exportAll, HttpGet, name = "export"),
-  pattern("/calendar", calendarView, HttpGet, name = "calendar"),
+  pattern("/archive", archiveView, HttpGet, name = "archive"),
+  pattern("/calendar", calendarRedirect, HttpGet, name = "calendar"),
   pattern("/rss", rssView, HttpGet, name="rss"),
   pattern("/{slug}", showPost, name = "post"),
 ]

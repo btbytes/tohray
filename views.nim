@@ -1,10 +1,12 @@
 import db_connector/db_sqlite
+import algorithm
 import karax / [karaxdsl, vdom]
 import logging
 import markdown
 import parseutils
 import prologue
 import prologue/middlewares/csrf
+import sequtils
 import strformat
 import strutils
 import tables
@@ -129,10 +131,15 @@ proc baseLayout(ctx: Context, title: string, content: VNode) {.async.} =
                     span(property = "name"): text "Write"
                   meta(property = "position", content = "2")
                 li(property = "itemListElement", typeof = "ListItem"):
+                  a(href = urlFor(ctx, "archive"), property = "item",
+                      typeof = "WebPage", class = "menu-item"):
+                    span(property = "name"): text "Archive"
+                  meta(property = "position", content = "3")
+                li(property = "itemListElement", typeof = "ListItem"):
                   a(href = "/logout", property = "item", typeof = "WebPage",
                       class = "menu-item"):
                     span(property = "name"): text "Logout"
-                  meta(property = "position", content = "3")
+                  meta(property = "position", content = "4")
               else:
                 li(property = "itemListElement", typeof = "ListItem"):
                   a(href = "/about", property = "item", typeof = "WebPage",
@@ -140,17 +147,20 @@ proc baseLayout(ctx: Context, title: string, content: VNode) {.async.} =
                     span(property = "name"): text "About"
                   meta(property = "position", content = "1")
                 li(property = "itemListElement", typeof = "ListItem"):
+                  a(href = urlFor(ctx, "archive"), property = "item",
+                      typeof = "WebPage", class = "menu-item"):
+                    span(property = "name"): text "Archive"
+                  meta(property = "position", content = "2")
+                li(property = "itemListElement", typeof = "ListItem"):
                   a(href = "/login", property = "item", typeof = "WebPage",
                       class = "menu-item"):
                     span(property = "name"): text "Login"
-                  meta(property = "position", content = "2")
+                  meta(property = "position", content = "3")
 
       tdiv(class = "container"):
         h1: text ctx.getSettings("siteTitle").getStr()
         content
       tdiv(class="container"):
-        a(href="/calendar"): text "Calendar"
-        span: text ", "
         a(href="/export"): text "Export"
   resp "<!DOCTYPE html>\n" & $vnode
 
@@ -572,22 +582,64 @@ proc getAllPostCounts(): Table[int, array[12, int]] =
       result[year] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     result[year][month] = count
 
-proc calendarView*(ctx: Context) {.async.} =
+proc getArchivePosts(): seq[Row] =
+  let db = open(consts.dbPath, "", "", "")
+  defer: db.close()
+  result = db.getAllRows(sql"SELECT slug, created FROM post ORDER BY created DESC, id DESC")
+
+proc archiveView*(ctx: Context) {.async.} =
   let postCounts = getAllPostCounts()
 
-  let vnode = buildHtml(table(id = "calendar")):
-    for year, counts in postCounts.pairs:
-      tr:
-        td: text $year
-        for month in Month:
-          let count = counts[month.ord-1]
-          td:
-            if count > 0:
-              a(href = fmt"/?month={year}-{align($(month.ord), 2, '0')}"): text (
-                  $month)[0..2] & " (" & $count & ")"
-            else:
-              text ($month)[0..2]
-  result = baseLayout(ctx, "Calendar", vnode)
+  let years = toSeq(postCounts.keys).sortedByIt(-it)
+
+  # Group all posts by year, then month (newest first).
+  var archive: seq[tuple[year: string,
+      months: seq[tuple[ym: string, name: string, posts: seq[Row]]]]] = @[]
+  for row in getArchivePosts():
+    let created = row[1]
+    if created.len < 7:
+      continue
+    let ym = created[0 ..< 7]
+    let year = ym[0 ..< 4]
+    if archive.len == 0 or archive[^1].year != year:
+      archive.add((year: year, months: @[]))
+    if archive[^1].months.len == 0 or archive[^1].months[^1].ym != ym:
+      let monthNum = parseInt(ym[5 ..< 7])
+      archive[^1].months.add((ym: ym, name: $(Month(monthNum)), posts: @[]))
+    archive[^1].months[^1].posts.add(row)
+
+  let vnode = buildHtml(tdiv()):
+    table(id = "calendar"):
+      for year in years:
+        let counts = postCounts[year]
+        tr:
+          td: text $year
+          for month in Month:
+            let count = counts[month.ord-1]
+            td:
+              if count > 0:
+                a(href = fmt"/?month={year}-{align($(month.ord), 2, '0')}"): text (
+                    $month)[0..2] & " (" & $count & ")"
+              else:
+                text ($month)[0..2]
+    tdiv(id = "archive"):
+      h2: text "Archive"
+      if archive.len == 0:
+        p: text "No posts yet."
+      for entry in archive:
+        h3: text entry.year
+        for m in entry.months:
+          h4:
+            a(href = fmt"/?month={m.ym}"): text fmt"{m.name} {entry.year} ({m.posts.len})"
+          ul:
+            for post in m.posts:
+              li:
+                a(href = fmt"/{post[0]}"): text post[1]
+  result = baseLayout(ctx, "Archive", vnode)
+
+
+proc calendarRedirect*(ctx: Context) {.async.} =
+  resp redirect("/archive", Http301)
 
 
 proc rssView*(ctx: Context) {.async.} =
